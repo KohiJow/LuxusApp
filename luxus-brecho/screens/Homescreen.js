@@ -1,21 +1,67 @@
 import React from 'react';
-import { View, Text, FlatList, Image, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { produtos } from '../data/produtos';
+import { pegarCarrinho } from '../data/Carrinho';
+import { useState, useEffect } from 'react';
+import { registrarListener } from '../utils/CarrinhoListener';
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
+    const [quantidadeCarrinho, setQuantidadeCarrinho] = useState(0);
+
+useEffect(() => {
+  const carregarCarrinho = async () => {
+    const itens = await pegarCarrinho();
+    // Somar todas as quantidades
+    const total = itens.reduce((acc, item) => acc + item.quantidade, 0);
+    setQuantidadeCarrinho(total);
+  };
+
+  // Chama a função quando a tela abre
+  carregarCarrinho();
+
+  // Você pode adicionar um listener para quando voltar da tela de Produto
+  const unsubscribe = navigation.addListener('focus', () => {
+    carregarCarrinho();
+
+    // Registrar listener para atualizar contador em tempo real
+    registrarListener(async () => {
+        const itens = await pegarCarrinho();
+        const total = itens.reduce((acc, item) => acc + item.quantidade, 0);
+        setQuantidadeCarrinho(total);
+  });
+  
+  });
+
+  return unsubscribe;
+}, [navigation]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Luxus Brechó 🛍️</Text>
 
-      <FlatList  //FlatList mostra uma lista de produtos.
+      {/* Cabeçalho: título + botão do carrinho */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Text style={styles.titulo}>Luxus Brechó 🛍️</Text>
+
+        {/* Botão do carrinho */}
+        <TouchableOpacity onPress={() => navigation.navigate('Carrinho')}>
+        <Text style={{ fontSize: 18 }}>
+            Carrinho 🛒 ({quantidadeCarrinho})
+        </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Lista de produtos */}
+      <FlatList
         data={produtos}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Image source={{ uri: item.imagem }} style={styles.imagem} />
-            <Text style={styles.nome}>{item.titulo}</Text>
-            <Text style={styles.preco}>R$ {item.preco.toFixed(2)}</Text>
-          </View>
+          <TouchableOpacity onPress={() => navigation.navigate('Produto', { produto: item })}>
+            <View style={styles.card}>
+              <Image source={{ uri: item.imagem }} style={styles.imagem} />
+              <Text style={styles.nome}>{item.titulo}</Text>
+              <Text style={styles.preco}>R$ {item.preco.toFixed(2)}</Text>
+            </View>
+          </TouchableOpacity>
         )}
       />
     </View>
@@ -30,8 +76,7 @@ const styles = StyleSheet.create({
   },
   titulo: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16
+    fontWeight: 'bold'
   },
   card: {
     borderWidth: 1,
